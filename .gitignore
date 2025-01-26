@@ -1,0 +1,66 @@
+# Byte-compiled files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Environment variables
+.env
+
+# Virtual environment
+venv/
+.env/
+
+# Docker specific files
+*.pid
+*.log
+*.swp
+docker-compose.override.yml
+docker-compose.override.yaml
+
+# Python cache files
+*.egg-info/
+*.egg
+*.eggs
+*.pyo
+
+# OS specific files
+.DS_Store
+Thumbs.db
+
+# Pytest files
+.pytest_cache/
+.tox/
+.nox/
+
+# IDE specific files
+.idea/
+.vscode/
+*.code-workspace
+
+# Build artifacts
+build/
+dist/
+*.spec
+*.exe
+
+# Coverage reports
+htmlcov/
+coverage/
+.coverage
+*.cover
+*.py,cover
+
+# Logs
+*.log
+
+# FastAPI specific files
+*.db
+*.sqlite
+*.sqlite3
+
+# Temporary files
+*.tmp
+*.temp
+
+
+*.vhdx
