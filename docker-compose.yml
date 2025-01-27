@@ -8,7 +8,7 @@ services:
     volumes:
       - ./app:/app/app
     env_file:
-      - .env  # Ortam değişkenlerini .env dosyasından alır
+      - .env  
     environment:
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}

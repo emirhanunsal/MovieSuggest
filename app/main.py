@@ -1,6 +1,6 @@
 from fastapi import FastAPI, HTTPException, Depends
-from app.services.auth import verify_password, create_access_token
-from app.services.crud import create_user, get_user
+from app.services.auth import create_access_token
+from app.services.crud import create_user, get_user, send_partner_request
 from app.schemas import UserCreate, UserLogin
 
 app = FastAPI()
@@ -42,3 +42,17 @@ def login(user: UserLogin):
     except Exception as e:
         raise HTTPException(status_code=500, detail="An unexpected error occurred. Please try again later.")
 
+
+@app.post("/send-partner-request/")
+def send_partner_request_endpoint(request: dict):
+    UserID = request.get("UserID")
+    PartnerID = request.get("PartnerID")
+    
+    if not get_user(UserID) or not get_user(PartnerID):
+        raise HTTPException(status_code=400, detail="Invalid user or partner ID")
+
+    result = send_partner_request(UserID, PartnerID)
+    if "error" in result:
+        raise HTTPException(status_code=400, detail=result["error"])
+    
+    return {"message": result["message"]}
