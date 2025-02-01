@@ -1,7 +1,7 @@
 from fastapi import FastAPI, HTTPException, Depends
 from app.services.auth import create_access_token
-from app.services.crud import create_user, get_user, send_partner_request
-from app.schemas import UserCreate, UserLogin
+from app.services.crud import create_user, get_user, send_partner_request, get_partner_requests, accept_partner_request, reject_partner_request
+from app.schemas import UserCreate, UserLogin, PartnerRequest, AcceptPartnerRequest, RejectPartnerRequest
 
 app = FastAPI()
 
@@ -44,15 +44,49 @@ def login(user: UserLogin):
 
 
 @app.post("/send-partner-request/")
-def send_partner_request_endpoint(request: dict):
-    UserID = request.get("UserID")
-    PartnerID = request.get("PartnerID")
-    
-    if not get_user(UserID) or not get_user(PartnerID):
-        raise HTTPException(status_code=400, detail="Invalid user or partner ID")
+def send_partner_request_endpoint(request: PartnerRequest):
+    UserID = request.UserID
+    PartnerID = request.PartnerID
+
+    if not get_user(UserID):
+        raise HTTPException(status_code=400, detail=f"User with ID {UserID} does not exist")
+    if not get_user(PartnerID):
+        raise HTTPException(status_code=400, detail=f"User with ID {PartnerID} does not exist")
 
     result = send_partner_request(UserID, PartnerID)
     if "error" in result:
         raise HTTPException(status_code=400, detail=result["error"])
     
+    return {"message": result["message"]}
+
+
+
+@app.get("/get-partner-requests/{user_id}")
+def get_partner_requests_endpoint(user_id: str):
+    requests = get_partner_requests(user_id)
+    if not requests["received_requests"] and not requests["sent_requests"]:
+        raise HTTPException(status_code=404, detail="No partner requests found")
+    return requests
+
+
+@app.post("/accept-partner-request/")
+def accept_partner_request_endpoint(request: AcceptPartnerRequest):
+    sender_id = request.SenderUserID
+    receiver_id = request.ReceiverUserID
+
+    result = accept_partner_request(sender_id, receiver_id)
+    if "error" in result:
+        raise HTTPException(status_code=400, detail=result["error"])
+
+    return {"message": result["message"]}
+
+@app.post("/reject-partner-request/")
+def reject_partner_request_endpoint(request: RejectPartnerRequest):
+    sender_id = request.SenderUserID
+    receiver_id = request.ReceiverUserID
+
+    result = reject_partner_request(sender_id, receiver_id)
+    if "error" in result:
+        raise HTTPException(status_code=400, detail=result["error"])
+
     return {"message": result["message"]}
