@@ -1,7 +1,7 @@
 from fastapi import FastAPI, HTTPException, Depends
 from app.services.auth import create_access_token
-from app.services.crud import create_user, get_user, send_partner_request, get_partner_requests, accept_partner_request, reject_partner_request
-from app.schemas import UserCreate, UserLogin, PartnerRequest, AcceptPartnerRequest, RejectPartnerRequest
+from app.services.crud import create_user, get_user, send_partner_request, get_partner_requests, accept_partner_request, reject_partner_request, get_user_preferences, update_user_preferences, add_to_user_preferences, delete_from_user_preferences
+from app.schemas import UserCreate, UserLogin, PartnerRequest, AcceptPartnerRequest, RejectPartnerRequest, UserPreferences, UpdatePreferences
 
 app = FastAPI()
 
@@ -89,4 +89,34 @@ def reject_partner_request_endpoint(request: RejectPartnerRequest):
     if "error" in result:
         raise HTTPException(status_code=400, detail=result["error"])
 
+    return {"message": result["message"]}
+
+
+@app.get("/preferences/{user_id}", response_model=UserPreferences)
+def get_preferences_endpoint(user_id: str):
+    # Call the CRUD function to get preferences
+    preferences = get_user_preferences(user_id)
+    if "error" in preferences:
+        raise HTTPException(status_code=404, detail=preferences["error"])
+    return preferences
+
+@app.put("/preferences/{user_id}")
+def update_preferences_endpoint(user_id: str, updates: UpdatePreferences):
+    result = update_user_preferences(user_id, updates.Genre, updates.Movies)
+    if "error" in result:
+        raise HTTPException(status_code=400, detail=result["error"])
+    return {"message": result["message"]}
+
+@app.patch("/preferences/{user_id}/add")
+def add_preferences_endpoint(user_id: str, updates: UpdatePreferences):
+    result = add_to_user_preferences(user_id, updates.Genre, updates.Movies)
+    if "error" in result:
+        raise HTTPException(status_code=400, detail=result["error"])
+    return {"message": result["message"]}
+
+@app.patch("/preferences/{user_id}/delete")
+def delete_preferences_endpoint(user_id: str, updates: UpdatePreferences):
+    result = delete_from_user_preferences(user_id, updates.Genre, updates.Movies)
+    if "error" in result:
+        raise HTTPException(status_code=400, detail=result["error"])
     return {"message": result["message"]}

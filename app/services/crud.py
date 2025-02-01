@@ -194,3 +194,114 @@ def reject_partner_request(sender_id, receiver_id):
     except Exception as e:
         print(f"Error in reject_partner_request: {e}")
         return {"error": str(e)}
+
+
+def get_user_preferences(user_id):
+    try:
+        # Get user preferences from the UserPreferences table
+        response = preferences_table.get_item(Key={"UserID": user_id})
+        if "Item" not in response:
+            return {"error": "Preferences not found for the given UserID"}
+        return response["Item"]
+    except Exception as e:
+        print(f"Error in get_user_preferences: {e}")
+        return {"error": str(e)}
+    
+def update_user_preferences(user_id, genre=None, movies=None):
+    try:
+        update_expression = []
+        expression_attribute_values = {}
+
+        # Update genre if provided
+        if genre:
+            update_expression.append("Genre = :genre")
+            expression_attribute_values[":genre"] = set(genre)  # Convert to set for DynamoDB SS type
+
+        # Update movies if provided
+        if movies:
+            update_expression.append("Movies = :movies")
+            expression_attribute_values[":movies"] = set(movies)  # Convert to set for DynamoDB SS type
+
+        if not update_expression:
+            return {"error": "No updates provided"}
+
+        # Build the update expression
+        update_expression = "SET " + ", ".join(update_expression)
+
+        # Update the item in the UserPreferences table
+        preferences_table.update_item(
+            Key={"UserID": user_id},
+            UpdateExpression=update_expression,
+            ExpressionAttributeValues=expression_attribute_values
+        )
+
+        return {"message": "Preferences updated successfully"}
+    except Exception as e:
+        print(f"Error in update_user_preferences: {e}")
+        return {"error": str(e)}
+
+def add_to_user_preferences(user_id, genre=None, movies=None):
+    try:
+        update_expression = []
+        expression_attribute_values = {}
+
+        # Add new genres to the existing Genre set
+        if genre:
+            update_expression.append("ADD Genre :genre")
+            expression_attribute_values[":genre"] = set(genre)  # Convert to set for DynamoDB SS type
+
+        # Add new movies to the existing Movies set
+        if movies:
+            update_expression.append("ADD Movies :movies")
+            expression_attribute_values[":movies"] = set(movies)  # Convert to set for DynamoDB SS type
+
+        if not update_expression:
+            return {"error": "No updates provided"}
+
+        # Build the update expression
+        update_expression = " ".join(update_expression)
+
+        # Update the item in the UserPreferences table
+        preferences_table.update_item(
+            Key={"UserID": user_id},
+            UpdateExpression=update_expression,
+            ExpressionAttributeValues=expression_attribute_values
+        )
+
+        return {"message": "Preferences updated successfully (added new items)"}
+    except Exception as e:
+        print(f"Error in add_to_user_preferences: {e}")
+        return {"error": str(e)}
+
+def delete_from_user_preferences(user_id, genre=None, movies=None):
+    try:
+        update_expression = []
+        expression_attribute_values = {}
+
+        # Remove specified genres from the Genre set
+        if genre:
+            update_expression.append("DELETE Genre :genre")
+            expression_attribute_values[":genre"] = set(genre)  # Convert to set for DynamoDB SS type
+
+        # Remove specified movies from the Movies set
+        if movies:
+            update_expression.append("DELETE Movies :movies")
+            expression_attribute_values[":movies"] = set(movies)  # Convert to set for DynamoDB SS type
+
+        if not update_expression:
+            return {"error": "No items provided to delete"}
+
+        # Build the update expression
+        update_expression = " ".join(update_expression)
+
+        # Update the item in the UserPreferences table
+        preferences_table.update_item(
+            Key={"UserID": user_id},
+            UpdateExpression=update_expression,
+            ExpressionAttributeValues=expression_attribute_values
+        )
+
+        return {"message": "Preferences updated successfully (deleted items)"}
+    except Exception as e:
+        print(f"Error in delete_from_user_preferences: {e}")
+        return {"error": str(e)}
