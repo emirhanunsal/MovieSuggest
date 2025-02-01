@@ -1,7 +1,8 @@
-from fastapi import FastAPI, HTTPException, Depends
+from fastapi import FastAPI, HTTPException
 from app.services.auth import create_access_token
 from app.services.crud import create_user, get_user, send_partner_request, get_partner_requests, accept_partner_request, reject_partner_request, get_user_preferences, update_user_preferences, add_to_user_preferences, delete_from_user_preferences
 from app.schemas import UserCreate, UserLogin, PartnerRequest, AcceptPartnerRequest, RejectPartnerRequest, UserPreferences, UpdatePreferences
+from app.services.openai_integration import generate_details
 
 app = FastAPI()
 
@@ -120,3 +121,17 @@ def delete_preferences_endpoint(user_id: str, updates: UpdatePreferences):
     if "error" in result:
         raise HTTPException(status_code=400, detail=result["error"])
     return {"message": result["message"]}
+
+
+
+#------------------OPENAI---------------------
+
+@app.get("/generate-details/")
+def get_movie_details(movie_name: str):
+    """
+    Generate or retrieve a genre and description for a movie.
+    """
+    result = generate_details(movie_name)
+    if "error" in result:
+        raise HTTPException(status_code=500, detail=result["error"])
+    return result

@@ -4,3 +4,4 @@ boto3
 python-dotenv
 passlib
 python-jose
+openai==0.28.0
