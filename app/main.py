@@ -1,8 +1,8 @@
 from fastapi import FastAPI, HTTPException
 from app.services.auth import create_access_token
-from app.services.crud import create_user, get_user, send_partner_request, get_partner_requests, accept_partner_request, reject_partner_request, get_user_preferences, update_user_preferences, add_to_user_preferences, delete_from_user_preferences
+from app.services.crud import create_user, get_user, send_partner_request, get_partner_requests, accept_partner_request, reject_partner_request, get_user_preferences, update_user_preferences, add_to_user_preferences, delete_from_user_preferences, get_combined_preferences
 from app.schemas import UserCreate, UserLogin, PartnerRequest, AcceptPartnerRequest, RejectPartnerRequest, UserPreferences, UpdatePreferences
-from app.services.openai_integration import generate_details
+from app.services.openai_integration import generate_details, generate_movie_recommendations
 
 app = FastAPI()
 
@@ -135,3 +135,24 @@ def get_movie_details(movie_name: str):
     if "error" in result:
         raise HTTPException(status_code=500, detail=result["error"])
     return result
+
+
+@app.get("/recommend-movies/")
+def recommend_movies(user_id: str, partner_id: str):
+    """
+    Get movie recommendations based on the preferences of two matched partners.
+    """
+    try:
+        # Get combined preferences
+        combined_preferences = get_combined_preferences(user_id, partner_id)
+
+        if not combined_preferences or (not combined_preferences["genres"] and not combined_preferences["movies"]):
+            raise HTTPException(status_code=400, detail="No shared preferences found to generate recommendations")
+
+        # Generate movie recommendations
+        recommendations = generate_movie_recommendations(combined_preferences)
+        return {"recommendations": recommendations}
+
+    except Exception as e:
+        print(f"Error in recommend_movies: {e}")
+        raise HTTPException(status_code=500, detail="An error occurred while generating recommendations")

@@ -305,3 +305,29 @@ def delete_from_user_preferences(user_id, genre=None, movies=None):
     except Exception as e:
         print(f"Error in delete_from_user_preferences: {e}")
         return {"error": str(e)}
+
+
+def get_combined_preferences(user_id: str, partner_id: str) -> dict:
+    """
+    Combine the preferences of two matched users.
+    """
+    try:
+        # Retrieve preferences of both users
+        user_preferences = get_user_preferences(user_id)
+        partner_preferences = get_user_preferences(partner_id)
+
+        if "error" in user_preferences or "error" in partner_preferences:
+            return {}
+
+        # Set birleşimi için | operatörü kullanılır
+        combined_genres = list(set(user_preferences.get("Genre", [])) | set(partner_preferences.get("Genre", [])))
+        combined_movies = list(set(user_preferences.get("Movies", [])) | set(partner_preferences.get("Movies", [])))
+
+        return {
+            "genres": combined_genres,
+            "movies": combined_movies
+        }
+    except Exception as e:
+        print(f"Error in get_combined_preferences: {e}")
+        return {}
+
