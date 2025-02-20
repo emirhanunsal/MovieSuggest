@@ -10,3 +10,7 @@ myenv\Scripts\activate # On Windows
 # Download requirements
 
 pip install -r requirements.txt
+
+# Start Project
+
+docker compose up --build
