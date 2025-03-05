@@ -41,10 +41,23 @@ async def count_unread_notifications(user_id: str) -> int:
         return 0
 
 @app.get("/", response_class=HTMLResponse)
-async def read_root(request: Request):
-    if request.cookies.get("access_token"):
-        return RedirectResponse(url="/preferences")
-    return templates.TemplateResponse("login.html", {"request": request})
+@login_required
+async def home(request: Request, current_user: str = Depends(get_current_user)):
+    try:
+        unread_count = await count_unread_notifications(current_user)
+        return templates.TemplateResponse(
+            "base.html", 
+            {
+                "request": request,
+                "unread_notifications": unread_count,
+                "current_user": current_user
+            }
+        )
+    except Exception as e:
+        return templates.TemplateResponse(
+            "base.html",
+            {"request": request, "error": "Sayfa yüklenirken bir hata oluştu"}
+        )
 
 @app.get("/login", response_class=HTMLResponse)
 async def login_page(request: Request):
@@ -155,18 +168,25 @@ async def register_post(
 
 @app.get("/add-partner", response_class=HTMLResponse)
 @login_required
-async def add_partner_page(request: Request, current_user: str = Depends(get_current_user)):
+async def add_partner_page(
+    request: Request,
+    current_user: str = Depends(get_current_user)
+):
     try:
         unread_count = await count_unread_notifications(current_user)
-        return templates.TemplateResponse("add_partner.html", {
-            "request": request,
-            "unread_notifications": unread_count
-        })
+        return templates.TemplateResponse(
+            "add_partner.html",
+            {
+                "request": request,
+                "unread_notifications": unread_count,
+                "current_user": current_user
+            }
+        )
     except Exception as e:
-        return templates.TemplateResponse("add_partner.html", {
-            "request": request,
-            "error": "Sayfa yüklenirken bir hata oluştu"
-        })
+        return templates.TemplateResponse(
+            "add_partner.html",
+            {"request": request, "error": "Sayfa yüklenirken bir hata oluştu"}
+        )
 
 @app.post("/send-partner-request", response_class=HTMLResponse)
 @login_required
@@ -208,7 +228,8 @@ async def partner_requests_page(
                 "request": request,
                 "received_requests": requests.get("received_requests", []),
                 "sent_requests": requests.get("sent_requests", []),
-                "unread_notifications": unread_count
+                "unread_notifications": unread_count,
+                "current_user": current_user
             }
         )
     except Exception as e:
@@ -282,7 +303,8 @@ async def preferences_page(
                 "request": request,
                 "preferences": preferences,
                 "partner": partner_id,
-                "unread_notifications": unread_count
+                "unread_notifications": unread_count,
+                "current_user": current_user
             }
         )
     except Exception as e:
@@ -404,55 +426,20 @@ async def recommendations_page(
         
         # Okunmamış bildirim sayısını al
         unread_count = await count_unread_notifications(current_user)
-
-        if not partner_id:
-            return templates.TemplateResponse(
-                "recommendations.html",
-                {
-                    "request": request,
-                    "partner": None,
-                    "error": "Film önerileri için bir partneriniz olması gerekiyor",
-                    "unread_notifications": unread_count
-                }
-            )
-
-        # Partners tablosundan mevcut önerileri al
-        partners_table = dynamodb.Table('Partners')
-        response = partners_table.scan(
-            FilterExpression="UserID = :user_id",
-            ExpressionAttributeValues={":user_id": current_user}
-        )
         
-        recommendations = []
-        if response.get("Items"):
-            partner_data = response["Items"][0]
-            movies = partner_data.get("Movies", [])
-            
-            movies_table = dynamodb.Table('Movies')
-            for movie in movies:
-                movie_details = movies_table.get_item(
-                    Key={"MovieName": movie}
-                ).get("Item", {})
-                
-                recommendations.append({
-                    "title": movie,
-                    "genres": movie_details.get("Genre", [])
-                })
-
         return templates.TemplateResponse(
             "recommendations.html",
             {
                 "request": request,
                 "partner": partner_id,
-                "recommendations": recommendations,
-                "unread_notifications": unread_count
+                "unread_notifications": unread_count,
+                "current_user": current_user
             }
         )
     except Exception as e:
-        print(f"Error in recommendations_page: {e}")
         return templates.TemplateResponse(
             "recommendations.html",
-            {"request": request, "error": "Film önerileri alınırken bir hata oluştu"}
+            {"request": request, "error": "Öneriler alınırken bir hata oluştu"}
         )
 
 @app.post("/generate-recommendations", response_class=HTMLResponse)
@@ -608,7 +595,8 @@ async def notifications_page(
             {
                 "request": request,
                 "notifications": notifications,
-                "unread_notifications": unread_count
+                "unread_notifications": unread_count,
+                "current_user": current_user
             }
         )
     except Exception as e:

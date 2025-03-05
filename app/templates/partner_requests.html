@@ -34,11 +34,11 @@
                                         </div>
                                         {% if not request.Status or request.Status == 'pending' %}
                                         <div>
-                                            <form action="/accept-partner-request" method="POST" class="d-inline">
+                                            <form action="/accept-partner-request" method="POST" class="d-inline request-form">
                                                 <input type="hidden" name="SenderUserID" value="{{ request.SenderUserID }}">
                                                 <button type="submit" class="btn btn-sm btn-success me-1">Kabul Et</button>
                                             </form>
-                                            <form action="/reject-partner-request" method="POST" class="d-inline">
+                                            <form action="/reject-partner-request" method="POST" class="d-inline request-form">
                                                 <input type="hidden" name="SenderUserID" value="{{ request.SenderUserID }}">
                                                 <button type="submit" class="btn btn-sm btn-outline-danger">Reddet</button>
                                             </form>
@@ -81,6 +81,15 @@
         </div>
     </div>
 </div>
+
+<script>
+document.querySelectorAll('.request-form').forEach(form => {
+    form.addEventListener('submit', function(e) {
+        const isAccept = this.action.includes('accept');
+        showLoading(isAccept ? 'Partner isteği kabul ediliyor...' : 'Partner isteği reddediliyor...');
+    });
+});
+</script>
 
 <style>
 .list-group-item {

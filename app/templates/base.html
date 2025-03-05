@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="tr">
+<html lang="tr" data-theme="light">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -11,17 +11,71 @@
             --text-color: #1f2937;
             --bg-color: #ffffff;
             --border-color: #e5e7eb;
+            --card-bg: #ffffff;
+            --hover-bg: #f3f4f6;
+        }
+
+        [data-theme="dark"] {
+            --primary-color: #6c5ce7;
+            --text-color: #ffffff;
+            --bg-color: #1a1a1a;
+            --border-color: #404040;
+            --card-bg: var(--bg-color);
+            --hover-bg: #333333;
+            --input-bg: #333333;
+            --input-text: #ffffff;
+            --placeholder-color: rgba(255, 255, 255, 0.8);
+            --heading-color: #ffffff;
+            --muted-color: rgba(255, 255, 255, 0.9);
+            --notification-bg: var(--bg-color);
         }
         
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            background-color: #f9fafb;
+            background-color: var(--bg-color);
             color: var(--text-color);
             line-height: 1.5;
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        [data-theme="dark"] h1, 
+        [data-theme="dark"] h2, 
+        [data-theme="dark"] h3, 
+        [data-theme="dark"] h4, 
+        [data-theme="dark"] h5, 
+        [data-theme="dark"] h6,
+        [data-theme="dark"] .card-title,
+        [data-theme="dark"] .alert-heading {
+            color: var(--heading-color);
+        }
+
+        [data-theme="dark"] .text-muted,
+        [data-theme="dark"] .text-body,
+        [data-theme="dark"] .list-group-item small {
+            color: var(--muted-color) !important;
+        }
+
+        [data-theme="dark"] .list-group {
+            background-color: var(--card-bg);
+            border-color: var(--border-color);
+        }
+
+        [data-theme="dark"] .list-group-item {
+            background-color: var(--card-bg);
+            border-color: var(--border-color);
+            color: var(--text-color);
+        }
+
+        [data-theme="dark"] .bg-white {
+            background-color: var(--card-bg) !important;
+        }
+
+        [data-theme="dark"] .border {
+            border-color: var(--border-color) !important;
         }
 
         .navbar {
-            background: var(--bg-color);
+            background: var(--card-bg);
             border-bottom: 1px solid var(--border-color);
         }
 
@@ -31,68 +85,61 @@
         }
 
         .nav-link {
-            color: #6b7280 !important;
+            color: var(--text-color) !important;
+            opacity: 0.7;
             font-weight: 500;
-            transition: color 0.2s;
+            transition: opacity 0.2s;
         }
 
         .nav-link:hover {
-            color: var(--text-color) !important;
+            opacity: 1;
         }
 
         .nav-link.active {
             color: var(--primary-color) !important;
+            opacity: 1;
         }
 
         .nav-link.has-unread {
             color: #ef4444 !important;
+            opacity: 1;
             font-weight: 600;
         }
 
-        .nav-link.has-unread:hover {
-            color: #dc2626 !important;
-        }
-
         .card {
-            background: var(--bg-color);
+            background: var(--card-bg);
             border: 1px solid var(--border-color);
             border-radius: 0.75rem;
             box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
         }
 
-        .form-control {
-            border: 1px solid var(--border-color);
-            border-radius: 0.5rem;
-            padding: 0.75rem 1rem;
+        .form-control, .form-select {
+            background-color: var(--input-bg, var(--card-bg));
+            color: var(--input-text, var(--text-color));
+            border-color: var(--border-color);
         }
 
-        .form-control:focus {
+        .form-control::placeholder {
+            color: var(--placeholder-color);
+            opacity: 1;
+        }
+
+        .form-control:focus, .form-select:focus {
+            background-color: var(--input-bg, var(--card-bg));
+            color: var(--input-text, var(--text-color));
             border-color: var(--primary-color);
-            box-shadow: 0 0 0 2px rgba(108, 92, 231, 0.1);
-        }
-
-        .form-select {
-            border: 1px solid var(--border-color);
-            border-radius: 0.5rem;
-            padding: 0.75rem 1rem;
-            background-color: var(--bg-color);
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-
-        .form-select:focus {
-            border-color: var(--primary-color);
-            box-shadow: 0 0 0 2px rgba(108, 92, 231, 0.1);
+            box-shadow: 0 0 0 2px rgba(108, 92, 231, 0.2);
         }
 
         .form-select option {
-            padding: 0.75rem 1rem;
-            background-color: var(--bg-color);
-            color: var(--text-color);
+            background-color: var(--input-bg, var(--card-bg));
+            color: var(--input-text, var(--text-color));
+            padding: 8px 12px;
         }
 
-        .form-select option:hover {
-            background-color: rgba(108, 92, 231, 0.1);
+        .form-select option:hover, .form-select option:focus, .form-select option:active, .form-select option:checked {
+            background-color: var(--primary-color);
+            color: white;
         }
 
         .btn {
@@ -143,9 +190,118 @@
         .form-select:focus {
             background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%235849c4' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
         }
+
+        /* Theme Toggle Button */
+        .theme-toggle {
+            background: none;
+            border: none;
+            padding: 0.5rem;
+            color: var(--text-color);
+            opacity: 0.7;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+
+        .theme-toggle:hover {
+            opacity: 1;
+        }
+
+        .theme-toggle svg {
+            width: 20px;
+            height: 20px;
+        }
+
+        /* Loading Spinner */
+        .loading-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 9999;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+        }
+
+        [data-theme="light"] .loading-overlay {
+            background: rgba(255, 255, 255, 0.8);
+        }
+
+        .loading-spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid var(--border-color);
+            border-top: 4px solid var(--primary-color);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 1rem;
+        }
+
+        .loading-text {
+            color: var(--primary-color);
+            font-size: 1.1rem;
+            font-weight: 500;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        [data-theme="dark"] .alert {
+            background-color: var(--card-bg);
+            border-color: var(--border-color);
+            color: var(--text-color);
+        }
+
+        [data-theme="dark"] .alert-info {
+            background-color: var(--card-bg);
+            border-color: var(--border-color);
+            color: var(--text-color);
+        }
+
+        [data-theme="dark"] .alert-light {
+            background-color: var(--card-bg);
+            border-color: var(--border-color);
+            color: var(--text-color);
+        }
+
+        [data-theme="dark"] .alert .alert-link {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+
+        [data-theme="dark"] .alert .alert-link:hover {
+            text-decoration: underline;
+        }
+
+        .user-id {
+            font-weight: 500;
+            color: var(--text-color) !important;
+            opacity: 1 !important;
+        }
+
+        .nav-link.text-danger {
+            color: #dc3545 !important;
+            opacity: 0.8;
+            transition: opacity 0.2s;
+        }
+
+        .nav-link.text-danger:hover {
+            opacity: 1;
+        }
     </style>
 </head>
 <body>
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="loading-spinner"></div>
+        <div class="loading-text">İşleminiz gerçekleştiriliyor...</div>
+    </div>
+
     {% if request.cookies.get("access_token") %}
     <nav class="navbar navbar-expand-lg">
         <div class="container">
@@ -175,7 +331,16 @@
                 </ul>
                 <ul class="navbar-nav">
                     <li class="nav-item">
-                        <a class="nav-link" href="/logout">Çıkış</a>
+                        <span class="nav-link me-3 user-id">{{ current_user }}</span>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link text-danger me-3" href="/logout">Çıkış</a>
+                    </li>
+                    <li class="nav-item">
+                        <button class="theme-toggle" id="themeToggle" title="Tema değiştir">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="theme-light" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+                            <svg xmlns="http://www.w3.org/2000/svg" class="theme-dark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display: none;"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+                        </button>
                     </li>
                 </ul>
             </div>
@@ -187,6 +352,37 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
+    // Theme handling
+    const themeToggle = document.getElementById('themeToggle');
+    const html = document.documentElement;
+    const lightIcon = themeToggle.querySelector('.theme-light');
+    const darkIcon = themeToggle.querySelector('.theme-dark');
+
+    // Load saved theme
+    const savedTheme = localStorage.getItem('theme') || 'light';
+    html.setAttribute('data-theme', savedTheme);
+    updateThemeIcon(savedTheme);
+
+    themeToggle.addEventListener('click', () => {
+        const currentTheme = html.getAttribute('data-theme');
+        const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+        
+        html.setAttribute('data-theme', newTheme);
+        localStorage.setItem('theme', newTheme);
+        updateThemeIcon(newTheme);
+    });
+
+    function updateThemeIcon(theme) {
+        if (theme === 'dark') {
+            lightIcon.style.display = 'none';
+            darkIcon.style.display = 'block';
+        } else {
+            lightIcon.style.display = 'block';
+            darkIcon.style.display = 'none';
+        }
+    }
+
+    // Notifications
     async function checkNotifications() {
         try {
             const response = await fetch('/notifications');
@@ -199,7 +395,19 @@
     }
 
     if (document.cookie.includes('access_token')) {
-        setInterval(checkNotifications, 30000); // Her 30 saniyede bir kontrol et
+        setInterval(checkNotifications, 30000);
+    }
+
+    function showLoading(message = 'İşleminiz gerçekleştiriliyor...') {
+        const overlay = document.getElementById('loadingOverlay');
+        const text = overlay.querySelector('.loading-text');
+        text.textContent = message;
+        overlay.style.display = 'flex';
+    }
+
+    function hideLoading() {
+        const overlay = document.getElementById('loadingOverlay');
+        overlay.style.display = 'none';
     }
     </script>
 </body>

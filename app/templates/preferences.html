@@ -11,7 +11,7 @@
                         <h3 class="h5 mb-0">Partneriniz</h3>
                         {% if partner %}
                         <div class="d-flex align-items-center">
-                            <span class="me-3">{{ partner }}</span>
+                            <span class="me-3 partner-name">{{ partner }}</span>
                             <form action="/delete-partner" method="POST" class="d-inline" 
                                   onsubmit="return confirm('Partner ilişkisini silmek istediğinize emin misiniz?');">
                                 <button type="submit" class="text-button text-danger">Partnerliği Sonlandır</button>
@@ -178,6 +178,10 @@
 
 .alert-light {
     background-color: #f8f9fa;
+}
+
+[data-theme="dark"] .partner-name {
+    color: var(--text-color);
 }
 </style>
 {% endblock %}

@@ -1,54 +1,57 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="min-h-screen flex items-center">
-    <div class="container">
-        <div class="row justify-content-center">
-            <div class="col-md-4">
-                <div class="text-center mb-4">
-                    <h1 class="display-6 fw-semibold mb-4">MovieSuggest</h1>
-                </div>
-                
-                <div class="card">
-                    <div class="card-body p-4">
-                        <h2 class="card-title h5 mb-4 text-center">Giriş Yap</h2>
-
-                        {% if error %}
-                        <div class="alert alert-danger py-2 mb-3">
-                            {{ error }}
-                        </div>
-                        {% endif %}
-
-                        <form method="POST" action="/login">
-                            <div class="mb-3">
-                                <input type="text" 
-                                       name="UserID" 
-                                       class="form-control" 
-                                       placeholder="Kullanıcı ID" 
-                                       required 
-                                       autofocus>
-                            </div>
-                            
-                            <div class="mb-4">
-                                <input type="password" 
-                                       name="password" 
-                                       class="form-control" 
-                                       placeholder="Şifre" 
-                                       required>
-                            </div>
-
-                            <button type="submit" class="btn btn-primary w-100">
-                                Giriş Yap
-                            </button>
-                        </form>
+<div class="container min-h-screen">
+    <div class="row justify-content-center">
+        <div class="col-md-6 col-lg-5">
+            <div class="text-center mb-4">
+                <h1 class="display-6 fw-semibold mb-4">MovieSuggest</h1>
+            </div>
+            <div class="card">
+                <div class="card-body p-4">
+                    <div class="d-flex justify-content-between align-items-center mb-4">
+                        <h2 class="h4 mb-0">Giriş Yap</h2>
+                        <button class="theme-toggle" id="themeToggle" title="Tema değiştir">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="theme-light" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+                            <svg xmlns="http://www.w3.org/2000/svg" class="theme-dark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display: none;"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+                        </button>
                     </div>
-                </div>
 
-                <div class="text-center mt-4">
-                    <a href="/register" class="text-decoration-none text-muted">
-                        Hesabınız yok mu? Kayıt olun
-                    </a>
+                    {% if error %}
+                    <div class="alert alert-danger py-2 mb-4">
+                        {{ error }}
+                    </div>
+                    {% endif %}
+
+                    <form method="POST" action="/login">
+                        <div class="mb-3">
+                            <input type="text" 
+                                   name="UserID" 
+                                   class="form-control" 
+                                   placeholder="Kullanıcı ID" 
+                                   required 
+                                   autofocus>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <input type="password" 
+                                   name="password" 
+                                   class="form-control" 
+                                   placeholder="Şifre" 
+                                   required>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary w-100">
+                            Giriş Yap
+                        </button>
+                    </form>
                 </div>
+            </div>
+
+            <div class="text-center mt-4">
+                <a href="/register" class="text-decoration-none text-muted">
+                    Hesabınız yok mu? Kayıt olun
+                </a>
             </div>
         </div>
     </div>
@@ -63,5 +66,56 @@
 .display-6 {
     color: var(--primary-color);
 }
+
+.theme-toggle {
+    background: none;
+    border: none;
+    padding: 0.5rem;
+    color: var(--text-color);
+    opacity: 0.7;
+    cursor: pointer;
+    transition: opacity 0.2s;
+}
+
+.theme-toggle:hover {
+    opacity: 1;
+}
+
+.theme-toggle svg {
+    width: 20px;
+    height: 20px;
+}
 </style>
+
+<script>
+// Theme handling
+const themeToggle = document.getElementById('themeToggle');
+const html = document.documentElement;
+const lightIcon = themeToggle.querySelector('.theme-light');
+const darkIcon = themeToggle.querySelector('.theme-dark');
+
+// Load saved theme
+const savedTheme = localStorage.getItem('theme') || 'light';
+html.setAttribute('data-theme', savedTheme);
+updateThemeIcon(savedTheme);
+
+themeToggle.addEventListener('click', () => {
+    const currentTheme = html.getAttribute('data-theme');
+    const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+    
+    html.setAttribute('data-theme', newTheme);
+    localStorage.setItem('theme', newTheme);
+    updateThemeIcon(newTheme);
+});
+
+function updateThemeIcon(theme) {
+    if (theme === 'dark') {
+        lightIcon.style.display = 'none';
+        darkIcon.style.display = 'block';
+    } else {
+        lightIcon.style.display = 'block';
+        darkIcon.style.display = 'none';
+    }
+}
+</script>
 {% endblock %} 
