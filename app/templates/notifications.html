@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-body p-4">
+                    <h2 class="card-title h4 mb-4">Bildirimler</h2>
+
+                    {% if error %}
+                    <div class="alert alert-danger py-2 mb-4">
+                        {{ error }}
+                    </div>
+                    {% endif %}
+
+                    {% if notifications %}
+                        <div class="list-group">
+                        {% for notification in notifications %}
+                            <div class="list-group-item border {% if not notification.IsRead %}unread{% endif %}">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <div class="text-body">{{ notification.Message }}</div>
+                                        <small class="text-muted">{{ notification.Timestamp }}</small>
+                                    </div>
+                                    {% if not notification.IsRead %}
+                                    <form action="/mark-notification-read" method="POST" class="d-inline">
+                                        <input type="hidden" name="timestamp" value="{{ notification.Timestamp }}">
+                                        <button type="submit" class="btn btn-sm btn-link text-muted">
+                                            <small>Okundu İşaretle</small>
+                                        </button>
+                                    </form>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="alert alert-light border">Bildiriminiz bulunmuyor.</div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.list-group-item {
+    background: transparent;
+    border-left: none !important;
+    border-right: none !important;
+    border-radius: 0 !important;
+    padding: 0.75rem 0;
+}
+
+.list-group-item:first-child {
+    border-top: none !important;
+}
+
+.list-group-item:last-child {
+    border-bottom: none !important;
+}
+
+.list-group-item.unread {
+    background-color: #f0f9ff;
+    margin: 0 -1.5rem;
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+}
+
+.btn-link {
+    text-decoration: none;
+    padding: 0;
+}
+
+.btn-link:hover {
+    text-decoration: underline;
+}
+
+.alert-light {
+    background-color: #f8f9fa;
+}
+</style>
+{% endblock %} 

@@ -1,0 +1,183 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <!-- Partner Durumu Kartı -->
+            <div class="card mb-4">
+                <div class="card-body p-4">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h3 class="h5 mb-0">Partneriniz</h3>
+                        {% if partner %}
+                        <div class="d-flex align-items-center">
+                            <span class="me-3">{{ partner }}</span>
+                            <form action="/delete-partner" method="POST" class="d-inline" 
+                                  onsubmit="return confirm('Partner ilişkisini silmek istediğinize emin misiniz?');">
+                                <button type="submit" class="text-button text-danger">Partnerliği Sonlandır</button>
+                            </form>
+                        </div>
+                        {% else %}
+                        <div class="d-flex align-items-center">
+                            <span class="text-muted me-3">Henüz bir partneriniz yok</span>
+                            <a href="/add-partner" class="text-button">Partner Ekle</a>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Film Tercihleri Kartı -->
+            <div class="card">
+                <div class="card-body p-4">
+                    <h2 class="card-title h4 mb-4">Film Tercihleriniz</h2>
+
+                    {% if error %}
+                    <div class="alert alert-danger py-2 mb-4">
+                        {{ error }}
+                    </div>
+                    {% endif %}
+
+                    <div class="row g-4">
+                        <!-- Film Ekleme -->
+                        <div class="col-md-6">
+                            <div class="mb-2">
+                                <h3 class="h6 mb-3">Sevdiğiniz Filmler</h3>
+                                <form action="/preferences/add-movie" method="POST" class="mb-3">
+                                    <div class="d-flex align-items-center">
+                                        <div class="flex-grow-1 me-3">
+                                            <input type="text" name="movie" class="form-control" 
+                                                   placeholder="Film adı" required>
+                                        </div>
+                                        <button type="submit" class="text-button">Ekle</button>
+                                    </div>
+                                </form>
+
+                                {% if preferences and preferences.Movies %}
+                                <div class="list-group">
+                                    {% for movie in preferences.Movies %}
+                                    <div class="list-group-item d-flex justify-content-between align-items-center border">
+                                        <span>{{ movie }}</span>
+                                        <form action="/preferences/delete-movie" method="POST" class="d-inline">
+                                            <input type="hidden" name="movie" value="{{ movie }}">
+                                            <button type="submit" class="text-button text-danger">Sil</button>
+                                        </form>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <!-- Tür Ekleme -->
+                        <div class="col-md-6">
+                            <div>
+                                <h3 class="h6 mb-3">Sevdiğiniz Türler</h3>
+                                <form action="/preferences/add-genre" method="POST" class="mb-3">
+                                    <div class="d-flex align-items-center">
+                                        <div class="flex-grow-1 me-3">
+                                            <select name="genre" class="form-select" required>
+                                                <option value="">Tür seçin</option>
+                                                <option value="Action">Aksiyon</option>
+                                                <option value="Adventure">Macera</option>
+                                                <option value="Animation">Animasyon</option>
+                                                <option value="Comedy">Komedi</option>
+                                                <option value="Crime">Suç</option>
+                                                <option value="Documentary">Belgesel</option>
+                                                <option value="Drama">Drama</option>
+                                                <option value="Family">Aile</option>
+                                                <option value="Fantasy">Fantastik</option>
+                                                <option value="Horror">Korku</option>
+                                                <option value="Mystery">Gizem</option>
+                                                <option value="Romance">Romantik</option>
+                                                <option value="Sci-Fi">Bilim Kurgu</option>
+                                                <option value="Thriller">Gerilim</option>
+                                                <option value="War">Savaş</option>
+                                                <option value="Western">Western</option>
+                                            </select>
+                                        </div>
+                                        <button type="submit" class="text-button">Ekle</button>
+                                    </div>
+                                </form>
+
+                                {% if preferences and preferences.Genre %}
+                                <div class="list-group">
+                                    {% for genre in preferences.Genre %}
+                                    <div class="list-group-item d-flex justify-content-between align-items-center border">
+                                        <span>{{ genre }}</span>
+                                        <form action="/preferences/delete-genre" method="POST" class="d-inline">
+                                            <input type="hidden" name="genre" value="{{ genre }}">
+                                            <button type="submit" class="text-button text-danger">Sil</button>
+                                        </form>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.list-group-item {
+    background: transparent;
+    border-left: none !important;
+    border-right: none !important;
+    border-radius: 0 !important;
+    padding-left: 0;
+    padding-right: 0;
+}
+
+.list-group-item:first-child {
+    border-top: none !important;
+}
+
+.list-group-item:last-child {
+    border-bottom: none !important;
+}
+
+.text-button {
+    background: none;
+    border: none;
+    padding: 0;
+    color: #6c5ce7;
+    font-weight: 500;
+    cursor: pointer;
+    text-decoration: none;
+}
+
+.text-button:hover {
+    color: #5849c4;
+    text-decoration: none;
+}
+
+.text-button.text-danger {
+    color: #dc3545;
+}
+
+.text-button.text-danger:hover {
+    color: #b02a37;
+}
+
+.form-control {
+    border: 1px solid var(--border-color);
+    border-radius: 0.5rem;
+    padding: 0.75rem 1rem;
+    background-color: var(--bg-color);
+    transition: all 0.2s;
+}
+
+.form-control:focus {
+    border-color: #6c5ce7;
+    box-shadow: 0 0 0 2px rgba(108, 92, 231, 0.1);
+}
+
+.alert-light {
+    background-color: #f8f9fa;
+}
+</style>
+{% endblock %}

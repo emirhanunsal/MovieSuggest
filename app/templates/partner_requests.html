@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-body p-4">
+                    <div class="d-flex justify-content-between align-items-center mb-4">
+                        <h2 class="card-title h4 mb-0">Partner İstekleri</h2>
+                        <a href="/add-partner" class="btn btn-primary">Yeni İstek Gönder</a>
+                    </div>
+
+                    {% if error %}
+                    <div class="alert alert-danger py-2 mb-4">
+                        {{ error }}
+                    </div>
+                    {% endif %}
+
+                    <!-- Gelen İstekler -->
+                    <div class="mb-4">
+                        <h3 class="h6 mb-3">Gelen İstekler</h3>
+                        {% if received_requests %}
+                            <div class="list-group">
+                            {% for request in received_requests %}
+                                <div class="list-group-item border">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <div class="text-body">{{ request.SenderUserID }}</div>
+                                            <small class="text-muted">{{ request.Timestamp }}</small>
+                                            {% if request.Status %}
+                                                <span class="badge bg-secondary ms-2">{{ request.Status }}</span>
+                                            {% endif %}
+                                        </div>
+                                        {% if not request.Status or request.Status == 'pending' %}
+                                        <div>
+                                            <form action="/accept-partner-request" method="POST" class="d-inline">
+                                                <input type="hidden" name="SenderUserID" value="{{ request.SenderUserID }}">
+                                                <button type="submit" class="btn btn-sm btn-success me-1">Kabul Et</button>
+                                            </form>
+                                            <form action="/reject-partner-request" method="POST" class="d-inline">
+                                                <input type="hidden" name="SenderUserID" value="{{ request.SenderUserID }}">
+                                                <button type="submit" class="btn btn-sm btn-outline-danger">Reddet</button>
+                                            </form>
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            {% endfor %}
+                            </div>
+                        {% else %}
+                            <div class="alert alert-light border">Gelen partner isteği bulunmuyor.</div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Gönderilen İstekler -->
+                    <div>
+                        <h3 class="h6 mb-3">Gönderilen İstekler</h3>
+                        {% if sent_requests %}
+                            <div class="list-group">
+                            {% for request in sent_requests %}
+                                <div class="list-group-item border">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <div class="text-body">{{ request.ReceiverUserID }}</div>
+                                            <small class="text-muted">{{ request.Timestamp }}</small>
+                                            {% if request.Status %}
+                                                <span class="badge bg-secondary ms-2">{{ request.Status }}</span>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                            </div>
+                        {% else %}
+                            <div class="alert alert-light border">Gönderilen partner isteği bulunmuyor.</div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.list-group-item {
+    background: transparent;
+    border-left: none !important;
+    border-right: none !important;
+    border-radius: 0 !important;
+    padding: 0.75rem 0;
+}
+
+.list-group-item:first-child {
+    border-top: none !important;
+}
+
+.list-group-item:last-child {
+    border-bottom: none !important;
+}
+
+.badge {
+    font-weight: 500;
+    padding: 0.35em 0.65em;
+}
+
+.btn-success {
+    background-color: #10b981;
+    border: none;
+}
+
+.btn-success:hover {
+    background-color: #059669;
+}
+
+.alert-light {
+    background-color: #f8f9fa;
+}
+</style>
+{% endblock %} 

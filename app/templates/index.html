@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="bg-white rounded-lg shadow-sm p-6">
+    <h1 class="text-2xl font-semibold text-gray-800 mb-6">Film Önerisi Al</h1>
+    
+    <form method="POST" action="/recommend" class="space-y-6">
+        <div>
+            <label for="movie_title" class="block text-sm font-medium text-gray-700">Sevdiğiniz bir film adı girin</label>
+            <input type="text" name="movie_title" id="movie_title" required
+                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                placeholder="Örn: The Godfather">
+        </div>
+
+        <div>
+            <label for="num_recommendations" class="block text-sm font-medium text-gray-700">Kaç film önerisi istersiniz?</label>
+            <select name="num_recommendations" id="num_recommendations"
+                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+                <option value="3">3</option>
+                <option value="5" selected>5</option>
+                <option value="10">10</option>
+            </select>
+        </div>
+
+        <button type="submit"
+            class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+            Önerileri Göster
+        </button>
+    </form>
+</div>
+
+{% if recommendations %}
+<div class="mt-8 bg-white rounded-lg shadow-sm p-6">
+    <h2 class="text-xl font-semibold text-gray-800 mb-4">Size Önerilen Filmler</h2>
+    <div class="grid grid-cols-1 gap-4">
+        {% for movie in recommendations %}
+        <div class="p-4 border rounded-lg hover:bg-gray-50 transition-colors">
+            <h3 class="text-lg font-medium text-gray-900">{{ movie.title }}</h3>
+            {% if movie.year %}
+            <p class="text-sm text-gray-500">Yıl: {{ movie.year }}</p>
+            {% endif %}
+            {% if movie.rating %}
+            <p class="text-sm text-gray-500">Puan: {{ movie.rating }}/10</p>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+{% endblock %} 

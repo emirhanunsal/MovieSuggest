@@ -14,7 +14,8 @@ dynamodb = boto3.resource(
 user_table = dynamodb.Table('Users')
 request_table = dynamodb.Table('PartnerRequests')
 preferences_table = dynamodb.Table('UserPreferences')
-partners_table = dynamodb.Table('Partners')  # New table for partner relationships
+partners_table = dynamodb.Table('Partners')
+notifications_table = dynamodb.Table('Notifications')  # Yeni tablo
 
 
 def create_user(user):
@@ -31,9 +32,29 @@ def create_user(user):
 def get_user(user_id):
     # Retrieve user information from the Users table
     try:
-        response = user_table.get_item(Key={"UserID": user_id})
-        print(f"get_user response: {response}")
-        return response.get("Item")
+        # Get user data using scan
+        response = user_table.scan(
+            FilterExpression="UserID = :user_id",
+            ExpressionAttributeValues={":user_id": user_id}
+        )
+        
+        if not response["Items"]:
+            return None
+            
+        user_data = response["Items"][0]
+
+        # Get partner information from Partners table using scan
+        partners_response = partners_table.scan(
+            FilterExpression="UserID = :user_id",
+            ExpressionAttributeValues={":user_id": user_id}
+        )
+        
+        if partners_response.get("Items"):
+            partner_data = partners_response["Items"][0]
+            user_data["partner_id"] = partner_data["PartnerID"]
+
+        print(f"get_user response: {user_data}")
+        return user_data
     except Exception as e:
         print(f"Error in get_user: {e}")
         return None
@@ -87,6 +108,14 @@ def send_partner_request(sender_id, receiver_id):
             "Status": "pending",
             "CreatedAt": datetime.utcnow().isoformat()
         })
+
+        # Alıcıya bildirim gönder
+        add_notification(
+            receiver_id,
+            f"{sender_id} size partner isteği gönderdi.",
+            "partner_request"
+        )
+
         return {"message": "Partner request sent successfully"}
     except Exception as e:
         print(f"Error in send_partner_request: {e}")
@@ -96,21 +125,42 @@ def send_partner_request(sender_id, receiver_id):
 # Retrieve partner requests
 def get_partner_requests(user_id):
     try:
-        # Get incoming requests for the user
-        received_requests = request_table.query(
-            KeyConditionExpression="ReceiverUserID = :user_id",
+        # Get incoming requests for the user using scan
+        received_requests = request_table.scan(
+            FilterExpression="ReceiverUserID = :user_id",
             ExpressionAttributeValues={":user_id": user_id}
         )
 
-        # Get outgoing requests from the user
+        # Get outgoing requests from the user using scan
         sent_requests = request_table.scan(
             FilterExpression="SenderUserID = :user_id",
             ExpressionAttributeValues={":user_id": user_id}
         )
 
+        # Map field names for received requests
+        mapped_received = []
+        for item in received_requests.get("Items", []):
+            mapped_received.append({
+                "SenderUserID": item.get("SenderUserID"),
+                "Timestamp": item.get("CreatedAt"),
+                "Status": item.get("Status")
+            })
+
+        # Map field names for sent requests
+        mapped_sent = []
+        for item in sent_requests.get("Items", []):
+            mapped_sent.append({
+                "ReceiverUserID": item.get("ReceiverUserID"),
+                "Timestamp": item.get("CreatedAt"),
+                "Status": item.get("Status")
+            })
+
+        print(f"Received requests: {mapped_received}")
+        print(f"Sent requests: {mapped_sent}")
+
         return {
-            "received_requests": received_requests["Items"],
-            "sent_requests": sent_requests["Items"]
+            "received_requests": mapped_received,
+            "sent_requests": mapped_sent
         }
     except Exception as e:
         print(f"Error in get_partner_requests: {e}")
@@ -118,31 +168,42 @@ def get_partner_requests(user_id):
 
 
 def accept_partner_request(sender_id, receiver_id):
-    # Accept a partner request
     try:
-        # Check if the partner request exists
+        # Check if the partner request exists using scan with filter
         response = request_table.scan(
-            FilterExpression="ReceiverUserID = :receiver AND SenderUserID = :sender",
+            FilterExpression="ReceiverUserID = :receiver AND SenderUserID = :sender AND #s = :pending",
             ExpressionAttributeValues={
                 ":receiver": receiver_id,
-                ":sender": sender_id
-            }
+                ":sender": sender_id,
+                ":pending": "pending"
+            },
+            ExpressionAttributeNames={"#s": "Status"}
         )
-        if "Items" not in response or len(response["Items"]) == 0:
-            return {"error": "Partner request not found"}
+        
+        if not response["Items"]:
+            return {"error": "Partner isteği bulunamadı"}
 
         # Update the partner request status to 'accepted'
         request_table.update_item(
             Key={"ReceiverUserID": receiver_id},
             UpdateExpression="SET #s = :accepted",
-            ExpressionAttributeValues={":accepted": "accepted"},
+            ExpressionAttributeValues={
+                ":accepted": "accepted"
+            },
             ExpressionAttributeNames={"#s": "Status"}
         )
 
         # Create a partner relationship
         create_partner_relationship(receiver_id, sender_id)
 
-        return {"message": "Partner request accepted and relationship created successfully"}
+        # Gönderene bildirim gönder
+        add_notification(
+            sender_id,
+            f"{receiver_id} partner isteğinizi kabul etti.",
+            "request_accepted"
+        )
+
+        return {"message": "Partner isteği kabul edildi ve ilişki başarıyla oluşturuldu"}
     except Exception as e:
         print(f"Error in accept_partner_request: {e}")
         return {"error": str(e)}
@@ -151,19 +212,23 @@ def accept_partner_request(sender_id, receiver_id):
 def create_partner_relationship(user_id, partner_id):
     # Create a partner relationship between two users
     try:
+        # Create entries in Partners table
+        current_time = datetime.utcnow().isoformat()
+        
         partners_table.put_item(Item={
             "UserID": user_id,
             "PartnerID": partner_id,
             "Status": "active",
-            "CreatedAt": datetime.utcnow().isoformat()
+            "CreatedAt": current_time
         })
         partners_table.put_item(Item={
             "UserID": partner_id,
             "PartnerID": user_id,
             "Status": "active",
-            "CreatedAt": datetime.utcnow().isoformat()
+            "CreatedAt": current_time
         })
-        return {"message": "Partner relationship created successfully"}
+
+        return {"message": "Partner ilişkisi başarıyla oluşturuldu"}
     except Exception as e:
         print(f"Error in create_partner_relationship: {e}")
         return {"error": str(e)}
@@ -171,26 +236,38 @@ def create_partner_relationship(user_id, partner_id):
 
 def reject_partner_request(sender_id, receiver_id):
     try:
-        # Check if the partner request exists
+        # Check if the partner request exists using scan with filter
         response = request_table.scan(
-            FilterExpression="ReceiverUserID = :receiver AND SenderUserID = :sender",
+            FilterExpression="ReceiverUserID = :receiver AND SenderUserID = :sender AND #s = :pending",
             ExpressionAttributeValues={
                 ":receiver": receiver_id,
-                ":sender": sender_id
-            }
+                ":sender": sender_id,
+                ":pending": "pending"
+            },
+            ExpressionAttributeNames={"#s": "Status"}
         )
-        if "Items" not in response or len(response["Items"]) == 0:
-            return {"error": "Partner request not found"}
+        
+        if not response["Items"]:
+            return {"error": "Partner isteği bulunamadı"}
 
         # Update the request status to 'rejected'
         request_table.update_item(
             Key={"ReceiverUserID": receiver_id},
             UpdateExpression="SET #s = :rejected",
-            ExpressionAttributeValues={":rejected": "rejected"},
+            ExpressionAttributeValues={
+                ":rejected": "rejected"
+            },
             ExpressionAttributeNames={"#s": "Status"}
         )
 
-        return {"message": "Partner request rejected successfully"}
+        # Gönderene bildirim gönder
+        add_notification(
+            sender_id,
+            f"{receiver_id} partner isteğinizi reddetti.",
+            "request_rejected"
+        )
+
+        return {"message": "Partner isteği başarıyla reddedildi"}
     except Exception as e:
         print(f"Error in reject_partner_request: {e}")
         return {"error": str(e)}
@@ -198,11 +275,23 @@ def reject_partner_request(sender_id, receiver_id):
 
 def get_user_preferences(user_id):
     try:
-        # Get user preferences from the UserPreferences table
-        response = preferences_table.get_item(Key={"UserID": user_id})
-        if "Item" not in response:
+        # Get user preferences using scan
+        response = preferences_table.scan(
+            FilterExpression="UserID = :user_id",
+            ExpressionAttributeValues={":user_id": user_id}
+        )
+        
+        if not response["Items"]:
             return {"error": "Preferences not found for the given UserID"}
-        return response["Item"]
+        
+        # Convert set items to strings
+        item = response["Items"][0]  # Get the first (and should be only) item
+        if "Genre" in item:
+            item["Genre"] = [str(genre) for genre in item["Genre"]]
+        if "Movies" in item:
+            item["Movies"] = [str(movie) for movie in item["Movies"]]
+            
+        return item
     except Exception as e:
         print(f"Error in get_user_preferences: {e}")
         return {"error": str(e)}
@@ -330,4 +419,140 @@ def get_combined_preferences(user_id: str, partner_id: str) -> dict:
     except Exception as e:
         print(f"Error in get_combined_preferences: {e}")
         return {}
+
+
+def add_notification(user_id: str, message: str, notification_type: str):
+    """
+    Kullanıcıya bildirim ekler.
+    """
+    try:
+        notifications_table.put_item(Item={
+            "UserID": user_id,
+            "Timestamp": datetime.utcnow().isoformat(),
+            "Message": message,
+            "Type": notification_type,
+            "IsRead": False
+        })
+        return {"message": "Bildirim başarıyla eklendi"}
+    except Exception as e:
+        print(f"Error in add_notification: {e}")
+        return {"error": str(e)}
+
+def get_notifications(user_id: str):
+    """
+    Kullanıcının bildirimlerini getirir.
+    """
+    try:
+        response = notifications_table.scan(
+            FilterExpression="UserID = :user_id",
+            ExpressionAttributeValues={":user_id": user_id}
+        )
+        
+        # En yeni bildirimleri önce göstermek için sıralama
+        notifications = sorted(
+            response.get("Items", []),
+            key=lambda x: x.get("Timestamp", ""),
+            reverse=True
+        )
+        
+        return notifications
+    except Exception as e:
+        print(f"Error in get_notifications: {e}")
+        return []
+
+def mark_notification_as_read(user_id: str, timestamp: str):
+    """
+    Bildirimi okundu olarak işaretler.
+    """
+    try:
+        # Find notification using scan
+        response = notifications_table.scan(
+            FilterExpression="UserID = :user_id AND #ts = :timestamp",
+            ExpressionAttributeValues={
+                ":user_id": user_id,
+                ":timestamp": timestamp
+            },
+            ExpressionAttributeNames={"#ts": "Timestamp"}
+        )
+        
+        if not response["Items"]:
+            return {"error": "Bildirim bulunamadı"}
+            
+        # Update the notification
+        notifications_table.update_item(
+            Key={
+                "UserID": user_id,
+                "Timestamp": timestamp
+            },
+            UpdateExpression="SET IsRead = :read",
+            ExpressionAttributeValues={":read": True}
+        )
+        return {"message": "Bildirim okundu olarak işaretlendi"}
+    except Exception as e:
+        print(f"Error in mark_notification_as_read: {e}")
+        return {"error": str(e)}
+
+def delete_partner(user_id):
+    try:
+        # Get partner information using scan
+        response = partners_table.scan(
+            FilterExpression="UserID = :user_id AND #s = :active",
+            ExpressionAttributeValues={
+                ":user_id": user_id,
+                ":active": "active"
+            },
+            ExpressionAttributeNames={"#s": "Status"}
+        )
+        
+        if not response["Items"]:
+            return {"error": "Partner ilişkisi bulunamadı"}
+
+        partner_id = response["Items"][0]["PartnerID"]
+
+        # Delete from Partners table for both users
+        partners_table.delete_item(Key={"UserID": user_id})
+        partners_table.delete_item(Key={"UserID": partner_id})
+
+        # Delete from PartnerRequests table
+        # Önce kullanıcının gönderdiği istekleri sil
+        sent_requests = request_table.scan(
+            FilterExpression="SenderUserID = :user_id",
+            ExpressionAttributeValues={":user_id": user_id}
+        )
+        for request in sent_requests.get("Items", []):
+            request_table.delete_item(
+                Key={"ReceiverUserID": request["ReceiverUserID"]}
+            )
+
+        # Sonra kullanıcının aldığı istekleri sil
+        received_requests = request_table.query(
+            KeyConditionExpression="ReceiverUserID = :user_id",
+            ExpressionAttributeValues={":user_id": user_id}
+        )
+        for request in received_requests.get("Items", []):
+            request_table.delete_item(
+                Key={"ReceiverUserID": user_id}
+            )
+
+        # Delete from Movies table for both users
+        movies_table = dynamodb.Table('Movies')
+        movies_table.delete_item(Key={"UserID": user_id})
+        movies_table.delete_item(Key={"UserID": partner_id})
+
+        # Send notifications to both users
+        add_notification(
+            user_id,
+            f"Partner ilişkiniz sonlandırıldı.",
+            "partner_deleted"
+        )
+        add_notification(
+            partner_id,
+            f"{user_id} partner ilişkisini sonlandırdı.",
+            "partner_deleted"
+        )
+
+        return {"message": "Partner ilişkisi başarıyla sonlandırıldı"}
+    except Exception as e:
+        print(f"Error in delete_partner: {e}")
+        return {"error": str(e)}
 

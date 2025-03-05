@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="min-h-screen flex items-center">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-md-4">
+                <div class="text-center mb-4">
+                    <h1 class="display-6 fw-semibold mb-4">MovieSuggest</h1>
+                </div>
+                
+                <div class="card">
+                    <div class="card-body p-4">
+                        <h2 class="card-title h5 mb-4 text-center">Giriş Yap</h2>
+
+                        {% if error %}
+                        <div class="alert alert-danger py-2 mb-3">
+                            {{ error }}
+                        </div>
+                        {% endif %}
+
+                        <form method="POST" action="/login">
+                            <div class="mb-3">
+                                <input type="text" 
+                                       name="UserID" 
+                                       class="form-control" 
+                                       placeholder="Kullanıcı ID" 
+                                       required 
+                                       autofocus>
+                            </div>
+                            
+                            <div class="mb-4">
+                                <input type="password" 
+                                       name="password" 
+                                       class="form-control" 
+                                       placeholder="Şifre" 
+                                       required>
+                            </div>
+
+                            <button type="submit" class="btn btn-primary w-100">
+                                Giriş Yap
+                            </button>
+                        </form>
+                    </div>
+                </div>
+
+                <div class="text-center mt-4">
+                    <a href="/register" class="text-decoration-none text-muted">
+                        Hesabınız yok mu? Kayıt olun
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.min-h-screen {
+    min-height: 100vh;
+    padding-top: 10vh;
+}
+
+.display-6 {
+    color: var(--primary-color);
+}
+</style>
+{% endblock %} 
