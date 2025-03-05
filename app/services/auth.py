@@ -11,20 +11,36 @@ from functools import wraps
 
 load_dotenv()
 
-SECRET_KEY = os.getenv("SECRET_KEY")
+# Get SECRET_KEY from environment or use default
+SECRET_KEY = os.getenv("SECRET_KEY", "your-256-bit-secret-key-moviesuggestion-app-2024")
+if not SECRET_KEY:
+    print("WARNING: Using default SECRET_KEY. This is not secure for production!")
+    SECRET_KEY = "your-256-bit-secret-key-moviesuggestion-app-2024"
+
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24  # 24 saat
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
-    to_encode = data.copy()
-    if expires_delta:
-        expire = datetime.utcnow() + expires_delta
-    else:
-        expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    
-    to_encode.update({"exp": expire})
-    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
-    return encoded_jwt
+    try:
+        print(f"Creating access token for data: {data}")
+        to_encode = data.copy()
+        if expires_delta:
+            expire = datetime.utcnow() + expires_delta
+        else:
+            expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+        
+        to_encode.update({"exp": expire})
+        print(f"Data to encode: {to_encode}")
+        print(f"Using SECRET_KEY: {SECRET_KEY}")
+        encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+        print(f"Generated token: {encoded_jwt}")
+        return encoded_jwt
+    except Exception as e:
+        print(f"Error creating access token: {str(e)}")
+        print(f"Error type: {type(e)}")
+        import traceback
+        print(f"Traceback: {traceback.format_exc()}")
+        raise
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 

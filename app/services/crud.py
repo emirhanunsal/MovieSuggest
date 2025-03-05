@@ -32,16 +32,29 @@ def create_user(user):
 def get_user(user_id):
     # Retrieve user information from the Users table
     try:
-        # Get user data using scan
-        response = user_table.scan(
+        print(f"Attempting to get user with ID: {user_id}")
+        
+        # DynamoDB bağlantısını kontrol et
+        print(f"AWS Region: {os.getenv('AWS_DEFAULT_REGION')}")
+        print(f"AWS Access Key ID: {os.getenv('AWS_ACCESS_KEY_ID')}")
+        print(f"AWS Secret Key exists: {'Yes' if os.getenv('AWS_SECRET_ACCESS_KEY') else 'No'}")
+        
+        # Tablo adını kontrol et
+        print(f"Table name: {user_table.name}")
+        
+        # Scan ile kullanıcıyı bul
+        scan_response = user_table.scan(
             FilterExpression="UserID = :user_id",
             ExpressionAttributeValues={":user_id": user_id}
         )
+        print(f"Scan response: {scan_response}")
         
-        if not response["Items"]:
+        if not scan_response.get("Items"):
+            print(f"User not found: {user_id}")
             return None
             
-        user_data = response["Items"][0]
+        user_data = scan_response["Items"][0]
+        print(f"Found user data: {user_data}")
 
         # Get partner information from Partners table using scan
         partners_response = partners_table.scan(
@@ -49,19 +62,24 @@ def get_user(user_id):
             ExpressionAttributeValues={":user_id": user_id}
         )
         
+        print(f"Partners table response: {partners_response}")
+        
         if partners_response.get("Items"):
             partner_data = partners_response["Items"][0]
             user_data["partner_id"] = partner_data["PartnerID"]
+            print(f"Found partner data: {partner_data}")
 
-        print(f"get_user response: {user_data}")
+        print(f"Final user data: {user_data}")
         return user_data
     except Exception as e:
-        print(f"Error in get_user: {e}")
+        print(f"Error in get_user: {str(e)}")
+        print(f"Error type: {type(e)}")
+        import traceback
+        print(f"Traceback: {traceback.format_exc()}")
         return None
 
 
 def send_partner_request(sender_id, receiver_id):
-    # Send a partner request from one user to another
     try:
         partners_table = dynamodb.Table('Partners')
 
@@ -83,8 +101,12 @@ def send_partner_request(sender_id, receiver_id):
 
         # Check if the sender already has a pending request
         existing_request = request_table.scan(
-            FilterExpression="SenderUserID = :sender",
-            ExpressionAttributeValues={":sender": sender_id}
+            FilterExpression="SenderUserID = :sender AND #s = :pending",
+            ExpressionAttributeValues={
+                ":sender": sender_id,
+                ":pending": "pending"
+            },
+            ExpressionAttributeNames={"#s": "Status"}
         )
         if existing_request["Count"] > 0:
             return {"error": "You can only send one partner request at a time"}
@@ -102,11 +124,12 @@ def send_partner_request(sender_id, receiver_id):
             return {"error": "This user already has pending requests"}
 
         # Add the partner request to the PartnerRequests table
+        current_time = datetime.utcnow().isoformat()
         request_table.put_item(Item={
             "ReceiverUserID": receiver_id,
             "SenderUserID": sender_id,
             "Status": "pending",
-            "CreatedAt": datetime.utcnow().isoformat()
+            "CreatedAt": current_time
         })
 
         # Alıcıya bildirim gönder
@@ -125,17 +148,30 @@ def send_partner_request(sender_id, receiver_id):
 # Retrieve partner requests
 def get_partner_requests(user_id):
     try:
+        print(f"Getting partner requests for user: {user_id}")
+        
         # Get incoming requests for the user using scan
         received_requests = request_table.scan(
-            FilterExpression="ReceiverUserID = :user_id",
-            ExpressionAttributeValues={":user_id": user_id}
+            FilterExpression="ReceiverUserID = :user_id AND #s = :pending",
+            ExpressionAttributeValues={
+                ":user_id": user_id,
+                ":pending": "pending"
+            },
+            ExpressionAttributeNames={"#s": "Status"}
         )
 
         # Get outgoing requests from the user using scan
         sent_requests = request_table.scan(
-            FilterExpression="SenderUserID = :user_id",
-            ExpressionAttributeValues={":user_id": user_id}
+            FilterExpression="SenderUserID = :user_id AND #s = :pending",
+            ExpressionAttributeValues={
+                ":user_id": user_id,
+                ":pending": "pending"
+            },
+            ExpressionAttributeNames={"#s": "Status"}
         )
+
+        print(f"Received requests scan response: {received_requests}")
+        print(f"Sent requests scan response: {sent_requests}")
 
         # Map field names for received requests
         mapped_received = []
@@ -155,15 +191,18 @@ def get_partner_requests(user_id):
                 "Status": item.get("Status")
             })
 
-        print(f"Received requests: {mapped_received}")
-        print(f"Sent requests: {mapped_sent}")
+        print(f"Mapped received requests: {mapped_received}")
+        print(f"Mapped sent requests: {mapped_sent}")
 
         return {
             "received_requests": mapped_received,
             "sent_requests": mapped_sent
         }
     except Exception as e:
-        print(f"Error in get_partner_requests: {e}")
+        print(f"Error in get_partner_requests: {str(e)}")
+        print(f"Error type: {type(e)}")
+        import traceback
+        print(f"Traceback: {traceback.format_exc()}")
         return {"received_requests": [], "sent_requests": []}
 
 
@@ -426,16 +465,25 @@ def add_notification(user_id: str, message: str, notification_type: str):
     Kullanıcıya bildirim ekler.
     """
     try:
-        notifications_table.put_item(Item={
+        timestamp = datetime.utcnow().isoformat()
+        print(f"Adding notification for user {user_id} at {timestamp}")
+        
+        item = {
             "UserID": user_id,
-            "Timestamp": datetime.utcnow().isoformat(),
+            "Timestamp": timestamp,
             "Message": message,
             "Type": notification_type,
             "IsRead": False
-        })
+        }
+        print(f"Notification item to be added: {item}")
+        
+        notifications_table.put_item(Item=item)
         return {"message": "Bildirim başarıyla eklendi"}
     except Exception as e:
-        print(f"Error in add_notification: {e}")
+        print(f"Error in add_notification: {str(e)}")
+        print(f"Error type: {type(e)}")
+        import traceback
+        print(f"Traceback: {traceback.format_exc()}")
         return {"error": str(e)}
 
 def get_notifications(user_id: str):
@@ -443,10 +491,13 @@ def get_notifications(user_id: str):
     Kullanıcının bildirimlerini getirir.
     """
     try:
+        print(f"Getting notifications for user: {user_id}")
+        
         response = notifications_table.scan(
             FilterExpression="UserID = :user_id",
             ExpressionAttributeValues={":user_id": user_id}
         )
+        print(f"Scan response: {response}")
         
         # En yeni bildirimleri önce göstermek için sıralama
         notifications = sorted(
@@ -455,9 +506,13 @@ def get_notifications(user_id: str):
             reverse=True
         )
         
+        print(f"Sorted notifications: {notifications}")
         return notifications
     except Exception as e:
-        print(f"Error in get_notifications: {e}")
+        print(f"Error in get_notifications: {str(e)}")
+        print(f"Error type: {type(e)}")
+        import traceback
+        print(f"Traceback: {traceback.format_exc()}")
         return []
 
 def mark_notification_as_read(user_id: str, timestamp: str):
@@ -465,79 +520,143 @@ def mark_notification_as_read(user_id: str, timestamp: str):
     Bildirimi okundu olarak işaretler.
     """
     try:
-        # Find notification using scan
+        print(f"Marking notification as read for user {user_id} at timestamp {timestamp}")
+        
+        # Önce bildirimi bul
         response = notifications_table.scan(
             FilterExpression="UserID = :user_id AND #ts = :timestamp",
             ExpressionAttributeValues={
                 ":user_id": user_id,
                 ":timestamp": timestamp
             },
-            ExpressionAttributeNames={"#ts": "Timestamp"}
+            ExpressionAttributeNames={
+                "#ts": "Timestamp"
+            }
         )
         
-        if not response["Items"]:
+        if not response.get("Items"):
             return {"error": "Bildirim bulunamadı"}
             
-        # Update the notification
-        notifications_table.update_item(
-            Key={
+        # Bildirimi güncelle
+        notification = response["Items"][0]
+        notifications_table.put_item(
+            Item={
                 "UserID": user_id,
-                "Timestamp": timestamp
-            },
-            UpdateExpression="SET IsRead = :read",
-            ExpressionAttributeValues={":read": True}
+                "Timestamp": timestamp,
+                "Message": notification["Message"],
+                "Type": notification["Type"],
+                "IsRead": True
+            }
         )
+        print("Notification marked as read successfully")
         return {"message": "Bildirim okundu olarak işaretlendi"}
     except Exception as e:
-        print(f"Error in mark_notification_as_read: {e}")
+        print(f"Error in mark_notification_as_read: {str(e)}")
+        print(f"Error type: {type(e)}")
+        import traceback
+        print(f"Traceback: {traceback.format_exc()}")
         return {"error": str(e)}
+
+def get_unread_notification_count(user_id: str) -> int:
+    """
+    Kullanıcının okunmamış bildirim sayısını döndürür.
+    """
+    try:
+        response = notifications_table.scan(
+            FilterExpression="UserID = :user_id AND IsRead = :is_read",
+            ExpressionAttributeValues={
+                ":user_id": user_id,
+                ":is_read": False
+            }
+        )
+        return len(response.get("Items", []))
+    except Exception as e:
+        print(f"Error in get_unread_notification_count: {str(e)}")
+        return 0
 
 def delete_partner(user_id):
     try:
+        print(f"Attempting to delete partner relationship for user: {user_id}")
+        
         # Get partner information using scan
         response = partners_table.scan(
-            FilterExpression="UserID = :user_id AND #s = :active",
+            FilterExpression="UserID = :user_id",
             ExpressionAttributeValues={
-                ":user_id": user_id,
-                ":active": "active"
-            },
-            ExpressionAttributeNames={"#s": "Status"}
+                ":user_id": user_id
+            }
         )
+        
+        print(f"Partners table scan response: {response}")
         
         if not response["Items"]:
             return {"error": "Partner ilişkisi bulunamadı"}
 
-        partner_id = response["Items"][0]["PartnerID"]
+        user_partner = response["Items"][0]
+        partner_id = user_partner["PartnerID"]
+        print(f"Found partner_id: {partner_id}")
 
-        # Delete from Partners table for both users
-        partners_table.delete_item(Key={"UserID": user_id})
-        partners_table.delete_item(Key={"UserID": partner_id})
-
-        # Delete from PartnerRequests table
-        # Önce kullanıcının gönderdiği istekleri sil
-        sent_requests = request_table.scan(
-            FilterExpression="SenderUserID = :user_id",
-            ExpressionAttributeValues={":user_id": user_id}
-        )
-        for request in sent_requests.get("Items", []):
-            request_table.delete_item(
-                Key={"ReceiverUserID": request["ReceiverUserID"]}
+        try:
+            # Delete from Partners table for both users
+            print(f"Deleting from Partners table for user: {user_id}")
+            partners_table.delete_item(
+                Key={
+                    "UserID": user_id
+                }
             )
-
-        # Sonra kullanıcının aldığı istekleri sil
-        received_requests = request_table.query(
-            KeyConditionExpression="ReceiverUserID = :user_id",
-            ExpressionAttributeValues={":user_id": user_id}
-        )
-        for request in received_requests.get("Items", []):
-            request_table.delete_item(
-                Key={"ReceiverUserID": user_id}
+            
+            print(f"Deleting from Partners table for partner: {partner_id}")
+            partners_table.delete_item(
+                Key={
+                    "UserID": partner_id
+                }
             )
+        except Exception as e:
+            print(f"Error deleting from Partners table: {e}")
+            raise e
 
-        # Delete from Movies table for both users
-        movies_table = dynamodb.Table('Movies')
-        movies_table.delete_item(Key={"UserID": user_id})
-        movies_table.delete_item(Key={"UserID": partner_id})
+        try:
+            # Delete from PartnerRequests table
+            print("Deleting from PartnerRequests table")
+            
+            # İlgili tüm partner isteklerini bul
+            requests_as_receiver = request_table.scan(
+                FilterExpression="ReceiverUserID = :user_id",
+                ExpressionAttributeValues={
+                    ":user_id": user_id
+                }
+            )
+            
+            requests_as_receiver_partner = request_table.scan(
+                FilterExpression="ReceiverUserID = :partner_id",
+                ExpressionAttributeValues={
+                    ":partner_id": partner_id
+                }
+            )
+            
+            print(f"Found requests where user is receiver: {requests_as_receiver}")
+            print(f"Found requests where partner is receiver: {requests_as_receiver_partner}")
+            
+            # Kullanıcının alıcı olduğu istekleri sil
+            for request in requests_as_receiver.get("Items", []):
+                print(f"Deleting request where user is receiver: {request}")
+                request_table.delete_item(
+                    Key={
+                        "ReceiverUserID": user_id
+                    }
+                )
+            
+            # Partnerin alıcı olduğu istekleri sil
+            for request in requests_as_receiver_partner.get("Items", []):
+                print(f"Deleting request where partner is receiver: {request}")
+                request_table.delete_item(
+                    Key={
+                        "ReceiverUserID": partner_id
+                    }
+                )
+            
+        except Exception as e:
+            print(f"Error deleting from PartnerRequests table: {e}")
+            raise e
 
         # Send notifications to both users
         add_notification(
@@ -553,6 +672,9 @@ def delete_partner(user_id):
 
         return {"message": "Partner ilişkisi başarıyla sonlandırıldı"}
     except Exception as e:
-        print(f"Error in delete_partner: {e}")
+        print(f"Error in delete_partner: {str(e)}")
+        print(f"Error type: {type(e)}")
+        import traceback
+        print(f"Traceback: {traceback.format_exc()}")
         return {"error": str(e)}
 

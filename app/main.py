@@ -36,28 +36,9 @@ dynamodb = boto3.resource(
 async def count_unread_notifications(user_id: str) -> int:
     try:
         notifications = get_notifications(user_id)
-        return len([n for n in notifications if not n.get("read", False)])
+        return len([n for n in notifications if not n.get("IsRead", False)])
     except Exception:
         return 0
-
-class NotificationMiddleware(BaseHTTPMiddleware):
-    async def dispatch(self, request: Request, call_next):
-        response = await call_next(request)
-        
-        if isinstance(response, Response) and hasattr(response, "context"):
-            try:
-                token = request.cookies.get("access_token")
-                if token and token.startswith("Bearer "):
-                    user = get_current_user(token)
-                    if user:
-                        unread_count = await count_unread_notifications(user)
-                        response.context["unread_notifications"] = unread_count
-            except Exception:
-                response.context["unread_notifications"] = 0
-        
-        return response
-
-app.add_middleware(NotificationMiddleware)
 
 @app.get("/", response_class=HTMLResponse)
 async def read_root(request: Request):
@@ -78,8 +59,32 @@ async def login_post(
     password: str = Form(...)
 ):
     try:
+        print(f"Login attempt for user: {UserID}")
+        print(f"Received password: {password}")
+        
+        # Form verilerini kontrol et
+        form_data = await request.form()
+        print(f"Form data: {form_data}")
+        
+        # DynamoDB bağlantısını kontrol et
+        print(f"AWS Region: {os.getenv('AWS_DEFAULT_REGION')}")
+        print(f"AWS Access Key ID: {os.getenv('AWS_ACCESS_KEY_ID')}")
+        print(f"AWS Secret Key exists: {'Yes' if os.getenv('AWS_SECRET_ACCESS_KEY') else 'No'}")
+        
         user = get_user(UserID)
-        if not user or user.get("password") != password:
+        print(f"get_user result: {user}")
+        
+        if not user:
+            print(f"User not found: {UserID}")
+            return templates.TemplateResponse(
+                "login.html",
+                {"request": request, "error": "Geçersiz kullanıcı ID veya şifre"}
+            )
+            
+        if user.get("password") != password:
+            print(f"Invalid password for user: {UserID}")
+            print(f"Expected password: {user.get('password')}")
+            print(f"Received password: {password}")
             return templates.TemplateResponse(
                 "login.html",
                 {"request": request, "error": "Geçersiz kullanıcı ID veya şifre"}
@@ -94,8 +99,13 @@ async def login_post(
             max_age=60 * 60 * 24,  # 24 saat
             samesite="lax"
         )
+        print(f"Successful login for user: {UserID}")
         return response
     except Exception as e:
+        print(f"Login error for user {UserID}: {str(e)}")
+        print(f"Error type: {type(e)}")
+        import traceback
+        print(f"Traceback: {traceback.format_exc()}")
         return templates.TemplateResponse(
             "login.html",
             {"request": request, "error": "Giriş yapılırken bir hata oluştu"}
@@ -145,8 +155,18 @@ async def register_post(
 
 @app.get("/add-partner", response_class=HTMLResponse)
 @login_required
-async def add_partner_page(request: Request):
-    return templates.TemplateResponse("add_partner.html", {"request": request})
+async def add_partner_page(request: Request, current_user: str = Depends(get_current_user)):
+    try:
+        unread_count = await count_unread_notifications(current_user)
+        return templates.TemplateResponse("add_partner.html", {
+            "request": request,
+            "unread_notifications": unread_count
+        })
+    except Exception as e:
+        return templates.TemplateResponse("add_partner.html", {
+            "request": request,
+            "error": "Sayfa yüklenirken bir hata oluştu"
+        })
 
 @app.post("/send-partner-request", response_class=HTMLResponse)
 @login_required
@@ -178,15 +198,24 @@ async def partner_requests_page(
     request: Request,
     current_user: str = Depends(get_current_user)
 ):
-    requests = get_partner_requests(current_user)
-    return templates.TemplateResponse(
-        "partner_requests.html",
-        {
-            "request": request,
-            "received_requests": requests.get("received_requests", []),
-            "sent_requests": requests.get("sent_requests", [])
-        }
-    )
+    try:
+        requests = get_partner_requests(current_user)
+        unread_count = await count_unread_notifications(current_user)
+        
+        return templates.TemplateResponse(
+            "partner_requests.html",
+            {
+                "request": request,
+                "received_requests": requests.get("received_requests", []),
+                "sent_requests": requests.get("sent_requests", []),
+                "unread_notifications": unread_count
+            }
+        )
+    except Exception as e:
+        return templates.TemplateResponse(
+            "partner_requests.html",
+            {"request": request, "error": "Partner istekleri alınırken bir hata oluştu"}
+        )
 
 @app.post("/accept-partner-request", response_class=HTMLResponse)
 @login_required
@@ -243,13 +272,17 @@ async def preferences_page(
         # Partner bilgisini al
         user_data = get_user(current_user)
         partner_id = user_data.get("partner_id") if user_data else None
+        
+        # Okunmamış bildirim sayısını al
+        unread_count = await count_unread_notifications(current_user)
 
         return templates.TemplateResponse(
             "preferences.html",
             {
                 "request": request,
                 "preferences": preferences,
-                "partner": partner_id
+                "partner": partner_id,
+                "unread_notifications": unread_count
             }
         )
     except Exception as e:
@@ -368,6 +401,9 @@ async def recommendations_page(
         # Partner bilgisini al
         user_data = get_user(current_user)
         partner_id = user_data.get("partner_id") if user_data else None
+        
+        # Okunmamış bildirim sayısını al
+        unread_count = await count_unread_notifications(current_user)
 
         if not partner_id:
             return templates.TemplateResponse(
@@ -375,7 +411,8 @@ async def recommendations_page(
                 {
                     "request": request,
                     "partner": None,
-                    "error": "Film önerileri için bir partneriniz olması gerekiyor"
+                    "error": "Film önerileri için bir partneriniz olması gerekiyor",
+                    "unread_notifications": unread_count
                 }
             )
 
@@ -389,10 +426,8 @@ async def recommendations_page(
         recommendations = []
         if response.get("Items"):
             partner_data = response["Items"][0]
-            # Movies'i doğrudan liste olarak al
             movies = partner_data.get("Movies", [])
             
-            # Her film için detayları al
             movies_table = dynamodb.Table('Movies')
             for movie in movies:
                 movie_details = movies_table.get_item(
@@ -409,7 +444,8 @@ async def recommendations_page(
             {
                 "request": request,
                 "partner": partner_id,
-                "recommendations": recommendations
+                "recommendations": recommendations,
+                "unread_notifications": unread_count
             }
         )
     except Exception as e:
@@ -565,9 +601,15 @@ async def notifications_page(
 ):
     try:
         notifications = get_notifications(current_user)
+        unread_count = await count_unread_notifications(current_user)
+        
         return templates.TemplateResponse(
             "notifications.html",
-            {"request": request, "notifications": notifications}
+            {
+                "request": request,
+                "notifications": notifications,
+                "unread_notifications": unread_count
+            }
         )
     except Exception as e:
         return templates.TemplateResponse(

@@ -44,6 +44,15 @@
             color: var(--primary-color) !important;
         }
 
+        .nav-link.has-unread {
+            color: #ef4444 !important;
+            font-weight: 600;
+        }
+
+        .nav-link.has-unread:hover {
+            color: #dc2626 !important;
+        }
+
         .card {
             background: var(--bg-color);
             border: 1px solid var(--border-color);
@@ -156,7 +165,7 @@
                         <a class="nav-link {% if request.url.path == '/partner-requests' %}active{% endif %}" href="/partner-requests">Partner İstekleri</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link {% if request.url.path == '/notifications' %}active{% endif %}" href="/notifications">
+                        <a class="nav-link {% if request.url.path == '/notifications' %}active{% endif %} {% if unread_notifications is defined and unread_notifications > 0 %}has-unread{% endif %}" href="/notifications">
                             Bildirimler
                             {% if unread_notifications is defined and unread_notifications > 0 %}
                             <span class="notification-badge">{{ unread_notifications }}</span>
