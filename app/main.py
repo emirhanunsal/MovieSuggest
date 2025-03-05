@@ -4,7 +4,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from fastapi.security import OAuth2PasswordBearer
 from app.services.auth import create_access_token, get_current_user, login_required
-from app.services.crud import create_user, get_user, send_partner_request, get_partner_requests, accept_partner_request, reject_partner_request, get_user_preferences, update_user_preferences, add_to_user_preferences, delete_from_user_preferences, get_combined_preferences, delete_partner, get_notifications, mark_notification_as_read
+from app.services.crud import create_user, get_user, send_partner_request, get_partner_requests, accept_partner_request, reject_partner_request, get_user_preferences, update_user_preferences, add_to_user_preferences, delete_from_user_preferences, get_combined_preferences, delete_partner, get_notifications, mark_notification_as_read, withdraw_partner_request
 from app.schemas import UserCreate, UserLogin, PartnerRequest, AcceptPartnerRequest, RejectPartnerRequest, UserPreferences, UpdatePreferences
 from app.services.openai_integration import generate_details, generate_movie_recommendations, generate_movie_details_async
 from pathlib import Path
@@ -278,6 +278,27 @@ async def reject_partner_request_endpoint(
         return templates.TemplateResponse(
             "partner_requests.html",
             {"request": request, "error": "İstek reddedilirken bir hata oluştu"}
+        )
+
+@app.post("/withdraw-partner-request", response_class=HTMLResponse)
+@login_required
+async def withdraw_partner_request_endpoint(
+    request: Request,
+    ReceiverUserID: str = Form(...),
+    current_user: str = Depends(get_current_user)
+):
+    try:
+        result = withdraw_partner_request(current_user, ReceiverUserID)
+        if "error" in result:
+            return templates.TemplateResponse(
+                "partner_requests.html",
+                {"request": request, "error": result["error"]}
+            )
+        return RedirectResponse(url="/partner-requests", status_code=303)
+    except Exception as e:
+        return templates.TemplateResponse(
+            "partner_requests.html",
+            {"request": request, "error": "İstek geri çekilirken bir hata oluştu"}
         )
 
 @app.get("/preferences", response_class=HTMLResponse)

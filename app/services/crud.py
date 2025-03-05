@@ -678,3 +678,36 @@ def delete_partner(user_id):
         print(f"Traceback: {traceback.format_exc()}")
         return {"error": str(e)}
 
+def withdraw_partner_request(sender_id, receiver_id):
+    try:
+        # İsteğin var olup olmadığını kontrol et
+        response = request_table.scan(
+            FilterExpression="ReceiverUserID = :receiver AND SenderUserID = :sender AND #s = :pending",
+            ExpressionAttributeValues={
+                ":receiver": receiver_id,
+                ":sender": sender_id,
+                ":pending": "pending"
+            },
+            ExpressionAttributeNames={"#s": "Status"}
+        )
+        
+        if not response["Items"]:
+            return {"error": "Geri çekilecek partner isteği bulunamadı"}
+
+        # İsteği sil
+        request_table.delete_item(
+            Key={"ReceiverUserID": receiver_id}
+        )
+
+        # Alıcıya bildirim gönder
+        add_notification(
+            receiver_id,
+            f"{sender_id} partner isteğini geri çekti.",
+            "request_withdrawn"
+        )
+
+        return {"message": "Partner isteği başarıyla geri çekildi"}
+    except Exception as e:
+        print(f"Error in withdraw_partner_request: {e}")
+        return {"error": str(e)}
+

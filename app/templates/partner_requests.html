@@ -68,6 +68,14 @@
                                                 <span class="badge bg-secondary ms-2">{{ request.Status }}</span>
                                             {% endif %}
                                         </div>
+                                        {% if not request.Status or request.Status == 'pending' %}
+                                        <div>
+                                            <form action="/withdraw-partner-request" method="POST" class="d-inline request-form">
+                                                <input type="hidden" name="ReceiverUserID" value="{{ request.ReceiverUserID }}">
+                                                <button type="submit" class="btn btn-sm btn-outline-danger">Geri Çek</button>
+                                            </form>
+                                        </div>
+                                        {% endif %}
                                     </div>
                                 </div>
                             {% endfor %}
