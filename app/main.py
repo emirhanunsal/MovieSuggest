@@ -138,7 +138,10 @@ async def register_post(
     password: str = Form(...)
 ):
     try:
+        print(f"Attempting to register user: {UserID}")
+        
         if get_user(UserID):
+            print(f"User already exists: {UserID}")
             return templates.TemplateResponse(
                 "register.html",
                 {"request": request, "error": "Bu kullanıcı ID zaten kayıtlı"}
@@ -149,21 +152,20 @@ async def register_post(
             "email": email,
             "password": password
         }
+        
+        print(f"Creating new user: {new_user}")
         create_user(new_user)
-
-        # Kullanıcı tercihleri için boş bir kayıt oluştur
-        preferences_table = dynamodb.Table('UserPreferences')
-        preferences_table.put_item(Item={
-            "UserID": UserID,
-            "Movies": [],
-            "Genre": []
-        })
+        print(f"User created successfully: {UserID}")
 
         return RedirectResponse(url="/login", status_code=303)
     except Exception as e:
+        print(f"Error in register_post: {str(e)}")
+        print(f"Error type: {type(e)}")
+        import traceback
+        print(f"Traceback: {traceback.format_exc()}")
         return templates.TemplateResponse(
             "register.html",
-            {"request": request, "error": "Kayıt olurken bir hata oluştu"}
+            {"request": request, "error": f"Kayıt olurken bir hata oluştu: {str(e)}"}
         )
 
 @app.get("/add-partner", response_class=HTMLResponse)
@@ -344,7 +346,7 @@ async def add_movie(
     try:
         result = add_to_user_preferences(
             current_user,
-            [],  # Boş tür listesi
+            None,  # Boş liste yerine None
             [movie]  # Sadece film
         )
         if "error" in result:
@@ -370,7 +372,7 @@ async def add_genre(
         result = add_to_user_preferences(
             current_user,
             [genre],  # Sadece tür
-            []  # Boş film listesi
+            None  # Boş liste yerine None
         )
         if "error" in result:
             return templates.TemplateResponse(
@@ -445,6 +447,41 @@ async def recommendations_page(
         user_data = get_user(current_user)
         partner_id = user_data.get("partner_id") if user_data else None
         
+        # Partners tablosundan film önerilerini al
+        recommendations = []
+        if partner_id:
+            partners_table = dynamodb.Table('Partners')
+            movies_table = dynamodb.Table('Movies')  # Movies tablosu
+            
+            response = partners_table.scan(
+                FilterExpression="UserID = :user_id",
+                ExpressionAttributeValues={":user_id": current_user}
+            )
+            
+            if response.get("Items"):
+                partner_data = response["Items"][0]
+                movies = partner_data.get("Movies", [])  # Filmleri liste olarak al
+                
+                # Her film için detayları al
+                for movie in movies:
+                    movie_response = movies_table.get_item(
+                        Key={"MovieName": movie}
+                    )
+                    
+                    movie_data = {
+                        "title": movie,
+                        "created_at": partner_data.get("CreatedAt", "")
+                    }
+                    
+                    # Film türlerini al
+                    if "Item" in movie_response:
+                        movie_details = movie_response["Item"]
+                        if "Genre" in movie_details:
+                            # Genre zaten liste olarak tutuluyor
+                            movie_data["genres"] = movie_details["Genre"]
+                    
+                    recommendations.append(movie_data)
+        
         # Okunmamış bildirim sayısını al
         unread_count = await count_unread_notifications(current_user)
         
@@ -453,6 +490,7 @@ async def recommendations_page(
             {
                 "request": request,
                 "partner": partner_id,
+                "recommendations": recommendations,
                 "unread_notifications": unread_count,
                 "current_user": current_user
             }
@@ -506,12 +544,15 @@ async def generate_recommendations_endpoint(
             
             if response.get("Items"):
                 partner_data = response["Items"][0]
-                existing_movies = partner_data.get("Movies", [])
+                existing_movies = partner_data.get("Movies", [])  # Mevcut filmleri al
+                if isinstance(existing_movies, set):  # Eğer set ise listeye çevir
+                    existing_movies = list(existing_movies)
+                
                 # Yeni önerileri başa ekle
                 new_movies = [movie["title"] for movie in recommendations.get("recommendations", [])]
-                all_movies = new_movies + existing_movies
+                all_movies = new_movies + existing_movies  # Listeleri birleştir
                 
-                # Update the movies in the table as a list, not a set
+                # Update the movies in the table as a list
                 partners_table.update_item(
                     Key={"UserID": user_id},
                     UpdateExpression="SET Movies = :movies",

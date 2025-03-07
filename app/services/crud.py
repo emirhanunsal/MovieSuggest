@@ -19,14 +19,24 @@ notifications_table = dynamodb.Table('Notifications')  # Yeni tablo
 
 
 def create_user(user):
-    # Add a new user to the Users table
-    item = {
-        "UserID": user["UserID"],
-        "email": user["email"],
-        "password": user["password"],
-    }
-    user_table.put_item(Item=item)
-    return item
+    try:
+        # Add a new user to the Users table
+        item = {
+            "UserID": user["UserID"],
+            "email": user["email"],
+            "password": user["password"],
+        }
+        user_table.put_item(Item=item)
+        
+        # Kullanıcı tercihleri için sadece UserID ile kayıt oluştur
+        preferences_table.put_item(Item={
+            "UserID": user["UserID"]
+        })
+        
+        return item
+    except Exception as e:
+        print(f"Error in create_user: {e}")
+        raise e
 
 
 def get_user(user_id):
@@ -370,24 +380,42 @@ def update_user_preferences(user_id, genre=None, movies=None):
 
 def add_to_user_preferences(user_id, genre=None, movies=None):
     try:
-        update_expression = []
+        # Önce mevcut tercihleri kontrol et
+        response = preferences_table.get_item(
+            Key={"UserID": user_id}
+        )
+        current_preferences = response.get("Item", {})
+        
+        update_expression_parts = []
         expression_attribute_values = {}
 
-        # Add new genres to the existing Genre set
-        if genre:
-            update_expression.append("ADD Genre :genre")
-            expression_attribute_values[":genre"] = set(genre)  # Convert to set for DynamoDB SS type
+        # Genre için kontrol ve güncelleme
+        if genre and len(genre) > 0:
+            genre_set = set(str(g) for g in genre)
+            if "Genre" not in current_preferences:
+                # İlk kez ekleniyor, SET kullan
+                update_expression_parts.append("SET Genre = :genre")
+            else:
+                # Zaten var, ADD kullan
+                update_expression_parts.append("ADD Genre :genre")
+            expression_attribute_values[":genre"] = genre_set
 
-        # Add new movies to the existing Movies set
-        if movies:
-            update_expression.append("ADD Movies :movies")
-            expression_attribute_values[":movies"] = set(movies)  # Convert to set for DynamoDB SS type
+        # Movies için kontrol ve güncelleme
+        if movies and len(movies) > 0:
+            movies_set = set(str(m) for m in movies)
+            if "Movies" not in current_preferences:
+                # İlk kez ekleniyor, SET kullan
+                update_expression_parts.append("SET Movies = :movies")
+            else:
+                # Zaten var, ADD kullan
+                update_expression_parts.append("ADD Movies :movies")
+            expression_attribute_values[":movies"] = movies_set
 
-        if not update_expression:
+        if not update_expression_parts:
             return {"error": "No updates provided"}
 
         # Build the update expression
-        update_expression = " ".join(update_expression)
+        update_expression = " ".join(update_expression_parts)
 
         # Update the item in the UserPreferences table
         preferences_table.update_item(
@@ -396,7 +424,7 @@ def add_to_user_preferences(user_id, genre=None, movies=None):
             ExpressionAttributeValues=expression_attribute_values
         )
 
-        return {"message": "Preferences updated successfully (added new items)"}
+        return {"message": "Preferences updated successfully"}
     except Exception as e:
         print(f"Error in add_to_user_preferences: {e}")
         return {"error": str(e)}
